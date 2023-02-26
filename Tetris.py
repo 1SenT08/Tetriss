@@ -135,13 +135,13 @@ class Tetris:
 
     def render_cup(self, screen): # Рисуем стакан, в дальнейшем надо будет удалить внутр. квадраты, но пока не надо, т.к. так удобнее
         pygame.draw.rect(screen, pygame.Color(255, 255, 255), (self.left, self.top, self.size_square * 10, self.size_square * 20), 2)
-        for j in range(self.height):
-            y1 = j * self.size_square + self.top
-            y2 = self.size_square
-            for i in range(self.width):
-                x1 = i * self.size_square + self.left
-                x2 = self.size_square
-                pygame.draw.rect(screen, pygame.Color(255, 255, 255), (x1, y1, x2, y2), 1)
+#        for j in range(self.height):
+#            y1 = j * self.size_square + self.top
+#            y2 = self.size_square
+#            for i in range(self.width):
+#                x1 = i * self.size_square + self.left
+#                x2 = self.size_square
+#                pygame.draw.rect(screen, pygame.Color(255, 255, 255), (x1, y1, x2, y2), 1)
 
     def set_view(self, left, top, size_square):
         self.left = left
@@ -315,6 +315,14 @@ class Tetris_picture(pygame.sprite.Sprite):
         self.rect.y = 0
 
 
+class Start_picture(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__(fon_sprite)
+        self.image = load_image('start.jpg')
+        self.rect = self.image.get_rect()
+        self.mask = pygame.mask.from_surface(self.image)
+
+
 class Tetris_figur_on_hold(pygame.sprite.Sprite):
     def __init__(self, size_screen, size_square, name_figur):
         super().__init__(hold_sprite)
@@ -343,7 +351,7 @@ def main():
     tetris = Tetris(10, 20)
     size_square = 30
     tetris.set_view(size[0] // 2 - 5 * size_square, size[1] - 20 * size_square, size_square)
-    Tetris_picture()
+
 
     running = True
     #speed = 900 # 150, 90
@@ -359,7 +367,8 @@ def main():
     pos_x_figure = size[0] // 2 - 2 * size_square
     pos_y_figure = size[1] - 20 * size_square
 
-    flag_loss = False
+    flag_start = True
+    flag_loss = True
     flag = False # тот самы флаг со строки 155
     figur_ver = 0 # выставляю начальное вариант фигуры
 
@@ -463,6 +472,7 @@ def main():
                         max_y_falling_figure = tetris.coords_bottom_square(figure, figur_ver)
                         hold_figur_for_sprite = name_from_figur[figures.index(hold_figur[0])]
                         next_figure_for_sprite = name_from_figur[figures.index(next_figure[0])]
+                    flag_start = False
 
                     if flag_loss:
                         figure = tetris.view_figure()
@@ -482,8 +492,11 @@ def main():
 
         screen.fill((0, 0, 0))
         # отрисовка:
-        fon_sprite.draw(screen)
-        if flag_loss:
+        if flag_start:
+            Start_picture()
+
+            fon_sprite.draw(screen)
+        if flag_loss and not flag_start:
             font = pygame.font.Font(None, 90)
             font_1 = pygame.font.Font(None, 60)
             text_loss = font.render("Поражение!", True, (250, 25, 15))
@@ -493,53 +506,54 @@ def main():
             screen.blit(text_loss_2, (x - 50, y2))
             screen.blit(text_loss, (x, y))
 
-        tetris.render_cup(screen)
-        tetris.render_figure_falling(figure, screen, pos_x_figure, pos_y_figure, size_square, figur_ver, flag)
-        tetris.render_figures(figure_list, size_square, screen)
-        q = tetris.burn_line()
-        score += value_score[q] * level # начисление очков за сжжигание линий. Стоит не возле начисления очков за фигуры т.к. там q успевает измениться
-        now_time += clock.tick() / 1000
-        if not flag_loss:
-            timer = str(now_time).split('.')[0]
+        if not flag_start:
+            tetris.render_cup(screen)
+            tetris.render_figure_falling(figure, screen, pos_x_figure, pos_y_figure, size_square, figur_ver, flag)
+            tetris.render_figures(figure_list, size_square, screen)
+            q = tetris.burn_line()
+            score += value_score[q] * level # начисление очков за сжжигание линий. Стоит не возле начисления очков за фигуры т.к. там q успевает измениться
+            now_time += clock.tick() / 1000
+            if not flag_loss:
+                timer = str(now_time).split('.')[0]
 
-        if hold_figur_for_sprite != -1:
-            for o in hold_sprite:
-                o.kill()
-            Tetris_figur_on_hold(size, size_square, hold_figur_for_sprite)
-            for i in next_sprite:
-                i.kill()
-            Tetris_figur_next(size, size_square, next_figure_for_sprite)
-        else:
-            for i in next_sprite:
-                i.kill()
-            Tetris_figur_next(size, size_square, next_figure_for_sprite)
-        hold_sprite.draw(screen)
-        next_sprite.draw(screen)
+            if hold_figur_for_sprite != -1:
+                for o in hold_sprite:
+                    o.kill()
+                Tetris_figur_on_hold(size, size_square, hold_figur_for_sprite)
+                for i in next_sprite:
+                    i.kill()
+                Tetris_figur_next(size, size_square, next_figure_for_sprite)
+            else:
+                for i in next_sprite:
+                    i.kill()
+                Tetris_figur_next(size, size_square, next_figure_for_sprite)
+            hold_sprite.draw(screen)
+            next_sprite.draw(screen)
 
-        if now_time - past_time >= speed_per_level[level] and not flag_loss:
-            past_time = now_time
-            if pos_y_figure + size_square <= size[1] - max_y_falling_figure and tetris.examination_bottom_coords(figure,
-                                                                                                        # Проверяет упала ли фигура на блок или на стакан
-                                                                                                        pos_x_figure,
-                                                                                                        pos_y_figure + size_square,
-                                                                                                        size_square,
-                                                                                                        figur_ver):
-                pos_y_figure += size_square
-            else:  # Фигура упала, значит записываем ее коодинаты в figure_list и регенирируем новую
-                tetris.render_figure_falling(figure, screen, pos_x_figure, pos_y_figure, size_square, figur_ver, flag)
-                flag = True
-                score += 5 * (pos_y_figure // 30 - 6)  # начисление очков за постановление фигуры. Начисляет слегка некоректно т.к. pos_y_figur стоит на центре фигур или я не знаю
-        if level == 4 and score > 58000:
-            level = 5
-        if level == 3 and score > 26000:
-            level = 4
-        if level == 2 and score > 10000:
-            level = 3
-        elif level == 1 and score > 4000:
-            level = 2
-        elif level == 0 and score > 1500:
-            level = 1
-        tetris.draw_interface(screen, size, size_square, score, timer, level)
+            if now_time - past_time >= speed_per_level[level] and not flag_loss:
+                past_time = now_time
+                if pos_y_figure + size_square <= size[1] - max_y_falling_figure and tetris.examination_bottom_coords(figure,
+                                                                                                            # Проверяет упала ли фигура на блок или на стакан
+                                                                                                            pos_x_figure,
+                                                                                                            pos_y_figure + size_square,
+                                                                                                            size_square,
+                                                                                                            figur_ver):
+                    pos_y_figure += size_square
+                else:  # Фигура упала, значит записываем ее коодинаты в figure_list и регенирируем новую
+                    tetris.render_figure_falling(figure, screen, pos_x_figure, pos_y_figure, size_square, figur_ver, flag)
+                    flag = True
+                    score += 5 * (pos_y_figure // 30 - 6)  # начисление очков за постановление фигуры. Начисляет слегка некоректно т.к. pos_y_figur стоит на центре фигур или я не знаю
+            if level == 4 and score > 58000:
+                level = 5
+            if level == 3 and score > 26000:
+                level = 4
+            if level == 2 and score > 10000:
+                level = 3
+            elif level == 1 and score > 4000:
+                level = 2
+            elif level == 0 and score > 1500:
+                level = 1
+            tetris.draw_interface(screen, size, size_square, score, timer, level)
         pygame.display.flip()
     pygame.quit()
 
